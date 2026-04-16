@@ -1,7 +1,6 @@
-// Flux Intelligence Engine
+// Flux Intelligence Engine v1.1 - Professional Polish
 const baseURL = "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies";
 
-// Element Selection
 const elements = {
     fromSelect: document.querySelector("#from-select"),
     toSelect: document.querySelector("#to-select"),
@@ -16,22 +15,35 @@ const elements = {
     toLabel: document.querySelector("#to-target-label"),
     form: document.querySelector("#converter-form"),
     watchlist: document.querySelector("#watchlist"),
-    copyBtn: document.querySelector(".copy-btn")
+    copyBtn: document.querySelector(".copy-btn"),
+    liveIndicator: document.querySelector("#live-indicator")
 };
 
 let chartInstance = null;
+let currentRate = 1;
 
-// initialization
+// Initialization Lifecycle
 const init = async () => {
     populateSelects();
     updateFlags();
+    initChart(); // MUST initialize chart before calling updateExchangeRate
+    
+    // Initial data fetch
     await updateExchangeRate();
     renderWatchlist();
-    initChart();
+    
+    // Auto-refresh every 60s
+    setInterval(() => {
+        updateExchangeRate();
+        renderWatchlist();
+    }, 60000);
 };
 
 const populateSelects = () => {
-    Object.keys(countryList).forEach(curr => {
+    // Sort keys alphabetically for better UX
+    const sortedCurrencies = Object.keys(countryList).sort();
+    
+    sortedCurrencies.forEach(curr => {
         const opt1 = new Option(curr, curr);
         const opt2 = new Option(curr, curr);
         if (curr === "USD") opt1.selected = true;
@@ -42,61 +54,87 @@ const populateSelects = () => {
 };
 
 const updateFlags = () => {
-    elements.fromFlag.src = `https://flagsapi.com/${countryList[elements.fromSelect.value]}/flat/64.png`;
-    elements.toFlag.src = `https://flagsapi.com/${countryList[elements.toSelect.value]}/flat/64.png`;
+    const fromCode = countryList[elements.fromSelect.value];
+    const toCode = countryList[elements.toSelect.value];
+    
+    elements.fromFlag.src = `https://flagsapi.com/${fromCode}/flat/64.png`;
+    elements.toFlag.src = `https://flagsapi.com/${toCode}/flat/64.png`;
+    
+    // Handle broken images
+    elements.fromFlag.onerror = () => elements.fromFlag.src = "https://via.placeholder.com/64x48?text=?";
+    elements.toFlag.onerror = () => elements.toFlag.src = "https://via.placeholder.com/64x48?text=?";
 };
 
-// Math Engine
+// Math Engine with cleaner UI feedback
 const evaluateExpression = (str) => {
     try {
-        // Basic safety: only allow numbers and operators
-        const cleanStr = str.replace(/[^-+*/%0-9.]/g, '');
-        return Function(`'use strict'; return (${cleanStr})`)();
+        const cleanStr = str.replace(/[^-+*/%0-9.()]/g, '');
+        if (!cleanStr) return 1;
+        const result = Function(`'use strict'; return (${cleanStr})`)();
+        return typeof result === 'number' && isFinite(result) ? result : 1;
     } catch {
         return null;
     }
 };
 
 const updateExchangeRate = async () => {
-    let rawVal = elements.amountInput.value.replace(/,/g, '');
-    let amt = evaluateExpression(rawVal);
+    const rawInput = elements.amountInput.value.replace(/,/g, '');
+    let amt = evaluateExpression(rawInput);
     
-    if (amt === null || isNaN(amt)) {
-        amt = 1;
+    if (amt === null) {
+        // Keep showing last valid or hint error
+        elements.calcHint.innerText = "Invalid Expression";
+        elements.calcHint.style.color = "#f43f5e";
+        return;
     }
 
-    elements.calcHint.innerText = amt !== parseFloat(rawVal) ? `= ${amt.toLocaleString()}` : "";
+    elements.calcHint.style.color = "var(--accent)";
+    const hasMath = rawInput.match(/[+*/%-]/);
+    elements.calcHint.innerText = hasMath ? `= ${amt.toLocaleString()}` : "";
     
     try {
         const from = elements.fromSelect.value.toLowerCase();
         const to = elements.toSelect.value.toLowerCase();
         
-        elements.convertBtn.innerHTML = `Analyzing...`;
-        
+        elements.convertBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> SYNCING...`;
+        elements.convertBtn.disabled = true;
+
         const response = await fetch(`${baseURL}/${from}.json`);
+        if (!response.ok) throw new Error("API Network issue");
+        
         const data = await response.json();
-        const rate = data[from][to];
+        currentRate = data[from][to];
         
-        const total = (amt * rate).toLocaleString(undefined, { maximumFractionDigits: 2 });
+        const total = (amt * currentRate);
         
-        elements.resultText.innerText = total;
+        // Use Intl.NumberFormat for premium precision control
+        const formatter = new Intl.NumberFormat(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+
+        elements.resultText.innerText = formatter.format(total);
         elements.toLabel.innerText = elements.toSelect.value;
-        elements.rateText.innerText = `1 ${elements.fromSelect.value} = ${rate.toFixed(4)} ${elements.toSelect.value}`;
+        elements.rateText.innerText = `1 ${elements.fromSelect.value} = ${currentRate.toFixed(4)} ${elements.toSelect.value}`;
         
-        // Update Chart with fake volatility for demo
-        updateChartData(rate);
+        updateChartData(currentRate);
         
+        // Success pulse
+        elements.liveIndicator.classList.add("pulse-active");
+        setTimeout(() => elements.liveIndicator.classList.remove("pulse-active"), 1000);
+
     } catch (error) {
-        console.error("Fetch error:", error);
+        console.error("Exchange Rate Sync Error:", error);
+        elements.rateText.innerText = "Market offline. Retrying...";
     } finally {
         elements.convertBtn.innerHTML = `<span>Check Performance</span> <i class="fa-solid fa-arrow-right"></i>`;
+        elements.convertBtn.disabled = false;
     }
 };
 
-// Market Watch Logic
+// Professional Watchlist rendering
 const renderWatchlist = async () => {
-    const favorites = ["EUR", "GBP", "JPY", "CNY", "SAR"];
-    elements.watchlist.innerHTML = "";
+    const favs = ["EUR", "GBP", "JPY", "CNY", "SAR", "AED", "AUD"];
     
     try {
         const base = elements.fromSelect.value.toLowerCase();
@@ -104,23 +142,27 @@ const renderWatchlist = async () => {
         const data = await res.json();
         const rates = data[base];
 
-        favorites.forEach(fav => {
+        elements.watchlist.innerHTML = "";
+
+        favs.forEach(fav => {
+            if (fav === elements.fromSelect.value) return; // Don't show base vs base
+            
             const rate = rates[fav.toLowerCase()];
-            const change = (Math.random() * 2 - 1).toFixed(2); // Mock change
+            const change = (Math.random() * 0.4 - 0.2).toFixed(2); // Reduced range for realism
             const isUp = change >= 0;
 
             const item = document.createElement("div");
             item.className = "watch-item";
             item.innerHTML = `
                 <div class="wi-left">
-                    <img src="https://flagsapi.com/${countryList[fav]}/flat/64.png" class="wi-flag">
+                    <img src="https://flagsapi.com/${countryList[fav]}/flat/64.png" class="wi-flag" loading="lazy">
                     <div>
                         <div class="wi-code">${fav}</div>
-                        <div class="wi-name">${fav} Market</div>
+                        <div class="wi-name">${fav} Spot Market</div>
                     </div>
                 </div>
                 <div class="wi-right">
-                    <div class="wi-val">${rate.toFixed(2)}</div>
+                    <div class="wi-val">${rate < 1 ? rate.toFixed(4) : rate.toFixed(2)}</div>
                     <div class="wi-change ${isUp ? 'change-up' : 'change-down'}">
                         ${isUp ? '▲' : '▼'} ${Math.abs(change)}%
                     </div>
@@ -129,23 +171,21 @@ const renderWatchlist = async () => {
             elements.watchlist.appendChild(item);
         });
     } catch (e) {
-        console.error("Watchlist error", e);
+        console.error("Watchlist connection error", e);
     }
 };
 
-// Chart.js implementation
 const initChart = () => {
     const ctx = document.getElementById('trendChart').getContext('2d');
-    const gradient = ctx.createLinearGradient(0, 0, 0, 180);
-    gradient.addColorStop(0, 'rgba(99, 102, 241, 0.3)');
+    const gradient = ctx.createLinearGradient(0, 0, 0, 220);
+    gradient.addColorStop(0, 'rgba(99, 102, 241, 0.4)');
     gradient.addColorStop(1, 'rgba(99, 102, 241, 0)');
 
     chartInstance = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: Array(12).fill(''),
+            labels: Array(20).fill(''),
             datasets: [{
-                label: 'Trend',
                 data: [],
                 borderColor: '#6366f1',
                 borderWidth: 3,
@@ -158,11 +198,12 @@ const initChart = () => {
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            animation: { duration: 2000 },
             plugins: { legend: { display: false } },
             scales: {
                 x: { display: false },
                 y: { 
-                    grid: { display: false, drawBorder: false },
+                    grid: { display: false },
                     ticks: { display: false }
                 }
             }
@@ -172,19 +213,22 @@ const initChart = () => {
 
 const updateChartData = (baseRate) => {
     if (!chartInstance) return;
-    // Generate mock history based on current rate
     const history = [];
-    for(let i=0; i<12; i++) {
-        history.push(baseRate * (1 + (Math.random() * 0.02 - 0.01)));
+    // Generate smoother volatility for pro feel
+    let last = baseRate;
+    for(let i=0; i<20; i++) {
+        last = last * (1 + (Math.random() * 0.004 - 0.002));
+        history.push(last);
     }
     chartInstance.data.datasets[0].data = history;
     chartInstance.update();
 };
 
-// Event Listeners
-elements.form.addEventListener("submit", (e) => {
-    e.preventDefault();
-    updateExchangeRate();
+// Event Management
+elements.amountInput.addEventListener("input", () => {
+    // Debounce to prevent API flooding while typing math expressions
+    clearTimeout(window.calcTimer);
+    window.calcTimer = setTimeout(updateExchangeRate, 400);
 });
 
 elements.fromSelect.addEventListener("change", () => {
@@ -209,22 +253,13 @@ elements.swapBtn.addEventListener("click", () => {
 
 elements.copyBtn.addEventListener("click", () => {
     const text = `${elements.amountInput.value} ${elements.fromSelect.value} = ${elements.resultText.innerText} ${elements.toSelect.value}`;
-    navigator.clipboard.writeText(text);
-    elements.copyBtn.innerHTML = `<i class="fa-solid fa-check"></i>`;
-    setTimeout(() => {
-        elements.copyBtn.innerHTML = `<i class="fa-regular fa-copy"></i>`;
-    }, 2000);
+    navigator.clipboard.writeText(text).then(() => {
+        elements.copyBtn.innerHTML = `<i class="fa-solid fa-check"></i>`;
+        setTimeout(() => {
+            elements.copyBtn.innerHTML = `<i class="fa-regular fa-copy"></i>`;
+        }, 2000);
+    });
 });
 
-// Auto-evaluate on input
-elements.amountInput.addEventListener("input", (e) => {
-    // Basic formatting for number readability
-    let val = e.target.value;
-    if (!isNaN(val) && val !== "") {
-        // Optional: formatting logic
-    }
-    updateExchangeRate();
-});
-
-// Start
+// Run
 init();
