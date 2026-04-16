@@ -44,7 +44,7 @@
 
 1.  **Clone the Repository**:
     ```bash
-    git clone https://github.com/yourusername/flux-currency-converter.git
+    git clone https://github.com/Imtiaz-Ali17314/FLUX-currency-converter
     ```
 2.  **Launch**:
     Open `index.html` in any modern browser (Chrome, Safari, Edge, or Firefox).
