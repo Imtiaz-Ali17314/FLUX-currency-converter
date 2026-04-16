@@ -1,47 +1,138 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Currency Converter</title>
-    <link rel="stylesheet" href="style.css" />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
-    />
-  </head>
-  <body>
-    <div class="container">
-      <h2>Curreny Converter</h2>
-      <form action="">
-        <div class="amount">
-          <p>Enter your Amount</p>
-          <input type="text" value="1" />
-        </div>
-        <div class="dropdown">
-          <div class="from">
-            <p>From</p>
-            <div class="select-container">
-              <img src="https://flagsapi.com/US/flat/64.png" alt="Flag" />
-              <select name="from" id=""></select>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flux | Pro Currency Intelligence</title>
+    <!-- Meta Tags -->
+    <meta name="description" content="Flux is a professional-grade currency intelligence dashboard with real-time tracking, historical trends, and market watch capabilities.">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- CSS -->
+    <link rel="stylesheet" href="style.css">
+    <!-- Icons & Charts -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="dark-theme">
+    <div class="mesh-bg"></div>
+    
+    <nav class="glass-nav">
+        <div class="nav-content">
+            <div class="logo">
+                <div class="logo-icon"><i class="fa-solid fa-bolt-lightning"></i></div>
+                <span>FLUX</span>
             </div>
-          </div>
-
-          <i class="fa-solid fa-arrow-right-arrow-left"></i>
-
-          <div class="to">
-            <p>To</p>
-            <div class="select-container">
-              <img src="https://flagsapi.com/PK/flat/64.png" alt="Flag" />
-              <select name="to" id=""></select>
+            <div class="nav-actions">
+                <span id="live-indicator"><span class="pulse"></span> LIVE MARKET</span>
+                <button class="icon-btn" id="theme-toggle"><i class="fa-solid fa-moon"></i></button>
             </div>
-          </div>
         </div>
-        <div class="msg">1 USD = 278 PKR</div>
-        <button>Get Exchange Rate</button>
-      </form>
-    </div>
+    </nav>
+
+    <main class="dashboard-grid">
+        <!-- Left Column: Converter -->
+        <section class="grid-item converter-section">
+            <div class="glass-card">
+                <div class="card-header">
+                    <h3>Intelligence Converter</h3>
+                    <p>Real-time institutional rates</p>
+                </div>
+                
+                <form id="converter-form">
+                    <div class="input-container">
+                        <label for="amount-input">Amount</label>
+                        <div class="amount-field-wrapper">
+                            <input type="text" id="amount-input" value="1,000" placeholder="0.00">
+                            <span class="calc-hint" id="calc-hint"></span>
+                        </div>
+                    </div>
+
+                    <div class="currency-selector">
+                        <div class="select-group">
+                            <label>From</label>
+                            <div class="custom-select" id="from-custom">
+                                <img src="https://flagsapi.com/US/flat/64.png" id="from-flag" alt="US">
+                                <select id="from-select"></select>
+                            </div>
+                        </div>
+
+                        <button type="button" class="swap-action" id="swap-btn">
+                            <i class="fa-solid fa-right-left"></i>
+                        </button>
+
+                        <div class="select-group">
+                            <label>To</label>
+                            <div class="custom-select" id="to-custom">
+                                <img src="https://flagsapi.com/PK/flat/64.png" id="to-flag" alt="PK">
+                                <select id="to-select"></select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="result-display">
+                        <div class="result-main">
+                            <span class="res-amount" id="result-text">---</span>
+                            <span class="res-curr" id="to-target-label">PKR</span>
+                        </div>
+                        <div class="result-meta">
+                            <span id="rate-text">1 USD = 278.45 PKR</span>
+                            <button type="button" class="copy-btn" title="Copy to clipboard"><i class="fa-regular fa-copy"></i></button>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="main-cta" id="convert-btn">
+                        <span>Check Performance</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Trend Card -->
+            <div class="glass-card trend-card">
+                <div class="card-header">
+                    <h4>Historical Trend</h4>
+                    <div class="time-filters">
+                        <button class="active">24H</button>
+                        <button disabled>7D</button>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Column: Market Watch -->
+        <section class="grid-item market-section">
+            <div class="glass-card full-height">
+                <div class="card-header">
+                    <div class="header-with-action">
+                        <h3>Market Watch</h3>
+                        <button class="add-watch"><i class="fa-solid fa-plus"></i></button>
+                    </div>
+                    <p>Top currency pairs performance</p>
+                </div>
+
+                <div class="watchlist" id="watchlist">
+                    <!-- Cards will be injected here -->
+                    <div class="watch-item loading-skeleton"></div>
+                    <div class="watch-item loading-skeleton"></div>
+                    <div class="watch-item loading-skeleton"></div>
+                </div>
+
+                <div class="market-footer">
+                    <p><i class="fa-solid fa-circle-info"></i> Rates update every 60s</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="minimal-footer">
+        <p>© 2026 FLUX Intelligence. All rates provided for informational purposes.</p>
+    </footer>
+
     <script src="codes.js"></script>
     <script src="first.js"></script>
-  </body>
+</body>
 </html>
