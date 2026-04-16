@@ -261,5 +261,10 @@ elements.copyBtn.addEventListener("click", () => {
     });
 });
 
+elements.form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    updateExchangeRate();
+});
+
 // Run
 init();
