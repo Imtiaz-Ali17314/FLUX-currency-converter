@@ -61,3 +61,4 @@ FLUX was built on the principle that financial tools should be as beautiful as t
 
 ## 📜 License
 © 2026 FLUX Intelligence. This project is shared for informational and professional portfolio purposes.
+
